@@ -23,35 +23,35 @@
 
 using namespace std;
 
-int main() {
-    const char* device = "/dev/input/event4"; // Need to find a way to look for it automatically
-    int fd = open(device, O_RDONLY | O_NONBLOCK);
+struct libevdev* dev;
 
-    struct libevdev* dev;
-    int rc = libevdev_new_from_fd(fd, &dev);
+int fd, rc;
 
-    std::unordered_map<int, char> keycodeToAscii = {
-        // Letters
-        {KEY_A, 'a'}, {KEY_B, 'b'}, {KEY_C, 'c'}, {KEY_D, 'd'},
-        {KEY_E, 'e'}, {KEY_F, 'f'}, {KEY_G, 'g'}, {KEY_H, 'h'},
-        {KEY_I, 'i'}, {KEY_J, 'j'}, {KEY_K, 'k'}, {KEY_L, 'l'},
-        {KEY_M, 'm'}, {KEY_N, 'n'}, {KEY_O, 'o'}, {KEY_P, 'p'},
-        {KEY_Q, 'q'}, {KEY_R, 'r'}, {KEY_S, 's'}, {KEY_T, 't'},
-        {KEY_U, 'u'}, {KEY_V, 'v'}, {KEY_W, 'w'}, {KEY_X, 'x'},
-        {KEY_Y, 'y'}, {KEY_Z, 'z'},
-        
-        // Numbers
-        {KEY_1, '1'}, {KEY_2, '2'}, {KEY_3, '3'}, {KEY_4, '4'},
-        {KEY_5, '5'}, {KEY_6, '6'}, {KEY_7, '7'}, {KEY_8, '8'},
-        {KEY_9, '9'}, {KEY_0, '0'},
-        
-        // Special characters
-        {KEY_MINUS, '-'}, {KEY_EQUAL, '='}, {KEY_BACKSPACE, '<'},
-        {KEY_ENTER, '\n'}
-    };
+const char* device = "/dev/input/event4"; // Need to find a way to look for it automatically
 
-    bool shiftPressed = false;
+std::unordered_map<int, char> keycodeToAscii = {
+    // Letters
+    {KEY_A, 'a'}, {KEY_B, 'b'}, {KEY_C, 'c'}, {KEY_D, 'd'},
+    {KEY_E, 'e'}, {KEY_F, 'f'}, {KEY_G, 'g'}, {KEY_H, 'h'},
+    {KEY_I, 'i'}, {KEY_J, 'j'}, {KEY_K, 'k'}, {KEY_L, 'l'},
+    {KEY_M, 'm'}, {KEY_N, 'n'}, {KEY_O, 'o'}, {KEY_P, 'p'},
+    {KEY_Q, 'q'}, {KEY_R, 'r'}, {KEY_S, 's'}, {KEY_T, 't'},
+    {KEY_U, 'u'}, {KEY_V, 'v'}, {KEY_W, 'w'}, {KEY_X, 'x'},
+    {KEY_Y, 'y'}, {KEY_Z, 'z'},
+    
+    // Numbers
+    {KEY_1, '1'}, {KEY_2, '2'}, {KEY_3, '3'}, {KEY_4, '4'},
+    {KEY_5, '5'}, {KEY_6, '6'}, {KEY_7, '7'}, {KEY_8, '8'},
+    {KEY_9, '9'}, {KEY_0, '0'},
+    
+    // Special characters
+    {KEY_MINUS, '-'}, {KEY_EQUAL, '='}, {KEY_BACKSPACE, '<'},
+    {KEY_ENTER, '\n'}
+};
 
+bool shiftPressed = false;
+
+void run() {
     while (true) {
         struct input_event ev;
         rc = libevdev_next_event(dev, LIBEVDEV_READ_FLAG_NORMAL, &ev);
@@ -111,9 +111,30 @@ int main() {
         }
         usleep(1000);
     }
+}
 
+void closeAndFree() {
     libevdev_free(dev);
     close(fd);
+}
+
+int main() {
+    #if defined(__linux__)
+        if (getuid() != 0) {
+            cout << "Not running as root. Exiting..." << endl;
+            exit(1);
+        }
+    #elif _WIN32
+        cout << "Not compatible with Windows(yet)!" << endl;
+    #else
+        cout << "Wait a minute! Who are you?" << endl;
+    #endif
+
+    fd = open(device, O_RDONLY | O_NONBLOCK);
+    rc = libevdev_new_from_fd(fd, &dev);
+
+    run();
+    closeAndFree();
 
     return 0;
 }
